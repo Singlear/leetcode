@@ -1,7 +1,159 @@
+use std::usize;
+
 struct Solution;
 
 #[allow(dead_code)]
 impl Solution {
+    // 48. Rotate Image
+    pub fn rotate(matrix: &mut [Vec<i32>]) {
+        if matrix.is_empty() {
+            return;
+        }
+        let mut n = matrix.len() - 1;
+        let mut i = 0;
+        while i < n {
+            for j in i..n {
+                let left_top = matrix[i][j];
+                matrix[i][j] = matrix[n - j + i][i];
+                matrix[n - j + i][i] = matrix[n][n - j + i];
+                matrix[n][n - j + i] = matrix[j][n];
+                matrix[j][n] = left_top;
+            }
+            i += 1;
+            n -= 1;
+        }
+    }
+
+    // 54. Spiral Matrix
+    pub fn spiral_order(matrix: Vec<Vec<i32>>) -> Vec<i32> {
+        let mut res = vec![];
+        if matrix.is_empty() {
+            return res;
+        }
+        let (mut top, mut bottom, mut left, mut right) = (
+            0i32,
+            matrix.len() as i32 - 1,
+            0i32,
+            matrix[0].len() as i32 - 1,
+        );
+        while top <= bottom && left <= right {
+            for i in left..=right {
+                res.push(matrix[top as usize][i as usize]);
+            }
+            top += 1;
+            for i in top..=bottom {
+                res.push(matrix[i as usize][right as usize]);
+            }
+            right -= 1;
+            if top <= bottom {
+                for i in (left..=right).rev() {
+                    res.push(matrix[bottom as usize][i as usize]);
+                }
+                bottom -= 1;
+            }
+            if left <= right {
+                for i in (top..=bottom).rev() {
+                    res.push(matrix[i as usize][left as usize]);
+                }
+                left += 1;
+            }
+        }
+        res
+    }
+
+    // 37. Sudoku Solver
+    pub fn solve_sudoku(board: &mut Vec<Vec<char>>) {
+        const BITS: u32 = 0x1FF;
+        let mut row = std::collections::HashSet::new();
+        let mut col = std::collections::HashSet::new();
+        let mut boxs = std::collections::HashSet::new();
+        for i in 0..9 {
+            for j in 0..9 {
+                if board[i][j] == '.' {
+                    continue;
+                }
+                let num = board[i][j] as usize - '1' as usize;
+                row.insert((i, num));
+                col.insert((j, num));
+                boxs.insert((i / 3 * 3 + j / 3, num));
+            }
+        }
+
+        #[allow(clippy::needless_range_loop)]
+        fn is_invalid(
+            i: usize,
+            j: usize,
+            c: char,
+            row: &std::collections::HashSet<(usize, usize)>,
+            col: &std::collections::HashSet<(usize, usize)>,
+            boxs: &std::collections::HashSet<(usize, usize)>,
+        ) -> bool {
+            let num = c as usize - '1' as usize;
+            row.contains(&(i, num))
+                || col.contains(&(j, num))
+                || boxs.contains(&(i / 3 * 3 + j / 3, num))
+        }
+
+        fn backtrack(
+            board: &mut Vec<Vec<char>>,
+            row: &mut std::collections::HashSet<(usize, usize)>,
+            col: &mut std::collections::HashSet<(usize, usize)>,
+            boxs: &mut std::collections::HashSet<(usize, usize)>,
+        ) -> bool {
+            for i in 0..9 {
+                for j in 0..9 {
+                    if board[i][j] != '.' {
+                        continue;
+                    }
+                    for c in '1'..='9' {
+                        if is_invalid(i, j, c, row, col, boxs) {
+                            continue;
+                        }
+                        board[i][j] = c;
+                        let num = c as usize - '1' as usize;
+                        row.insert((i, num));
+                        col.insert((j, num));
+                        boxs.insert((i / 3 * 3 + j / 3, num));
+
+                        if backtrack(board, row, col, boxs) {
+                            return true;
+                        }
+                        row.remove(&(i, num));
+                        col.remove(&(j, num));
+                        boxs.remove(&(i / 3 * 3 + j / 3, num));
+                        board[i][j] = '.';
+                    }
+                    return false;
+                }
+            }
+            true
+        }
+        backtrack(board, &mut row, &mut col, &mut boxs);
+    }
+
+    // 36. Valid Sudoku
+    pub fn is_valid_sudoku(board: Vec<Vec<char>>) -> bool {
+        let mut rows = vec![vec![false; 9]; 9];
+        let mut cols = vec![vec![false; 9]; 9];
+        let mut boxes = vec![vec![false; 9]; 9];
+        for i in 0..9 {
+            for j in 0..9 {
+                if board[i][j] == '.' {
+                    continue;
+                }
+                let num = board[i][j] as usize - '1' as usize;
+                let box_index = i / 3 * 3 + j / 3;
+                if rows[i][num] || cols[j][num] || boxes[box_index][num] {
+                    return false;
+                }
+                rows[i][num] = true;
+                cols[j][num] = true;
+                boxes[box_index][num] = true;
+            }
+        }
+        true
+    }
+
     // 76. Minimum Window Substring
     pub fn min_window(s: String, t: String) -> String {
         let s_bytes = s.as_bytes();
