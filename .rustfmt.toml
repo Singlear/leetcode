@@ -2,4 +2,4 @@ imports_layout = "HorizontalVertical"
 imports_granularity = "Crate"
 group_imports = "One"
 wrap_comments = true
-comment_width = 100
+comment_width = 140

@@ -23,6 +23,419 @@ struct Solution;
 
 #[allow(dead_code)]
 impl Solution {
+    // 148. Sort List
+    pub fn sort_list(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+        todo!()
+        // let mut dummy = ListNode::new(i32::MIN);
+        // let mut head = head.as_mut();
+        // while head.is_some() {
+        //     let curr = head.as_mut()?;
+
+        //     let mut new_head = &mut dummy;
+        //     while new_head.next.is_some() && new_head.next.as_mut()?.val < curr.as_mut().val {
+        //         new_head = new_head.next.as_mut()?;
+        //     }
+        //     head = &mut curr.next.as_mut();
+        //     curr.next = new_head.next;
+        // }
+        // dummy.next
+    }
+    // 21. Merge Two Sorted Lists
+    pub fn merge_two_lists(
+        list1: Option<Box<ListNode>>,
+        list2: Option<Box<ListNode>>,
+    ) -> Option<Box<ListNode>> {
+        match (list1, list2) {
+            (None, None) => None,
+            (Some(n), None) | (None, Some(n)) => Some(n),
+            (Some(n1), Some(n2)) => {
+                if n1.val >= n2.val {
+                    Some(Box::new(ListNode {
+                        val: n2.val,
+                        next: Solution::merge_two_lists(Some(n1), n2.next),
+                    }))
+                } else {
+                    Some(Box::new(ListNode {
+                        val: n1.val,
+                        next: Solution::merge_two_lists(n1.next, Some(n2)),
+                    }))
+                }
+            }
+        }
+    }
+
+    // 2. Add Two Numbers
+    pub fn add_two_numbers(
+        mut l1: Option<Box<ListNode>>,
+        mut l2: Option<Box<ListNode>>,
+    ) -> Option<Box<ListNode>> {
+        let mut dummy = ListNode::new(0);
+        let mut head = &mut dummy;
+        let mut carry = 0;
+        while l1.is_some() || l2.is_some() || carry == 1 {
+            let mut sum = l1.as_ref().map_or(0, |node| node.val)
+                + l2.as_ref().map_or(0, |node| node.val)
+                + carry;
+            if sum >= 10 {
+                carry = 1;
+                sum -= 10;
+            } else {
+                carry = 0;
+            }
+            let node = ListNode::new(sum);
+            head.next = Some(Box::new(node));
+            head = head.next.as_mut().unwrap();
+            l1 = l1.and_then(|node| node.next);
+            l2 = l2.and_then(|node| node.next);
+        }
+        dummy.next
+    }
+
+    // 224. Basic Calculator
+    pub fn calculate(s: String) -> i32 {
+        let mut stack: Vec<i32> = vec![1];
+        let mut ans = 0;
+        let mut num = 0;
+        let mut sign = 1;
+
+        for ch in s.chars() {
+            match ch {
+                ' ' => continue,
+                '0'..='9' => {
+                    num = num * 10 + (ch as i32 - '0' as i32);
+                }
+                '+' | '-' => {
+                    ans += sign * num;
+                    num = 0;
+                    sign = *stack.last().unwrap() * if ch == '+' { 1 } else { -1 };
+                }
+                '(' => {
+                    stack.push(sign);
+                }
+                ')' => {
+                    stack.pop();
+                }
+                _ => {}
+            }
+        }
+        ans + sign * num
+    }
+
+    // 150. Evaluate Reverse Polish Notation
+    pub fn eval_rpn(tokens: Vec<String>) -> i32 {
+        let mut stack = Vec::with_capacity(tokens.len());
+        for str in tokens {
+            match str {
+                s if s == "+" => {
+                    let val = stack.pop().unwrap() + stack.pop().unwrap();
+                    stack.push(val);
+                }
+                s if s == "-" => {
+                    let val = 0 - stack.pop().unwrap() + stack.pop().unwrap();
+                    stack.push(val);
+                }
+                s if s == "*" => {
+                    let val = stack.pop().unwrap() * stack.pop().unwrap();
+                    stack.push(val);
+                }
+                s if s == "/" => {
+                    let b = stack.pop().unwrap();
+                    let a = stack.pop().unwrap();
+                    stack.push(a / b);
+                }
+                _ => stack.push(str.parse().unwrap()),
+            }
+        }
+        stack.pop().unwrap()
+    }
+
+    // 71. Simplify Path
+    pub fn simplify_path(path: String) -> String {
+        let root = "/".to_owned();
+        let mut stack = vec![];
+        for directory in path.split("/") {
+            match directory {
+                "" | "." => continue,
+                ".." => {
+                    stack.pop();
+                }
+                directory => stack.push(directory),
+            }
+        }
+
+        root + stack.join("/").as_str()
+    }
+
+    // 20. Valid Parentheses
+    pub fn is_valid(s: String) -> bool {
+        let mut stack = Vec::new();
+        fn pair(b: &u8) -> u8 {
+            match b {
+                b')' => b'(',
+                b'}' => b'{',
+                b']' => b'[',
+                _ => b' ',
+            }
+        }
+
+        for c in s.as_bytes().iter() {
+            match c {
+                b'(' | b'{' | b'[' => stack.push(c),
+                b')' | b'}' | b']' => match stack.pop() {
+                    Some(pop) if *pop == pair(c) => (),
+                    _ => return false,
+                },
+                _ => (),
+            }
+            println!("{:?}", stack);
+        }
+        stack.is_empty()
+    }
+
+    // 452. Minimum Number of Arrows to Burst Balloons
+    pub fn find_min_arrow_shots(mut points: Vec<Vec<i32>>) -> i32 {
+        let mut count = 1;
+        points.sort_unstable_by_key(|v| v[1]);
+        let mut shoot = points[0][1];
+        for ele in points.into_iter() {
+            if ele[0] > shoot {
+                count += 1;
+                shoot = ele[1];
+            }
+        }
+        count
+    }
+
+    // 57. Insert Interval
+    pub fn insert(intervals: Vec<Vec<i32>>, mut new_interval: Vec<i32>) -> Vec<Vec<i32>> {
+        let mut res = Vec::with_capacity(intervals.len());
+        let mut pushed = false;
+        for curr in intervals.into_iter() {
+            if pushed {
+                res.push(curr);
+                continue;
+            }
+            if new_interval[1] < curr[0] {
+                res.push(new_interval.clone());
+                res.push(curr);
+                pushed = true;
+                continue;
+            }
+            if new_interval[0] <= curr[1] && new_interval[1] >= curr[0] {
+                new_interval = vec![min(new_interval[0], curr[0]), max(new_interval[1], curr[1])];
+                if new_interval[1] <= curr[1] {
+                    res.push(new_interval.clone());
+                } else {
+                    continue;
+                }
+                pushed = true;
+            } else {
+                res.push(curr);
+            }
+        }
+        if !pushed {
+            res.push(new_interval);
+        }
+        res
+    }
+
+    // 228. Summary Ranges
+    pub fn summary_ranges(nums: Vec<i32>) -> Vec<String> {
+        if nums.is_empty() {
+            return vec![];
+        }
+        let mut res = vec![];
+        let mut left = nums[0];
+        let mut right = None;
+        for ele in nums.into_iter().skip(1) {
+            if ele == right.unwrap_or(left) {
+                continue;
+            }
+            if ele == right.unwrap_or(left) + 1 {
+                right = Some(ele);
+                continue;
+            }
+            res.push(if right.is_some() {
+                format!("{}->{}", left, right.unwrap())
+            } else {
+                left.to_string()
+            });
+            left = ele;
+            right = None;
+        }
+        res.push(if right.is_some() {
+            format!("{}->{}", left, right.unwrap())
+        } else {
+            left.to_string()
+        });
+        res
+    }
+
+    // 128. Longest Consecutive Sequence
+    pub fn longest_consecutive(mut nums: Vec<i32>) -> i32 {
+        if nums.is_empty() {
+            return 0;
+        }
+        nums.sort_unstable();
+        // nums.dedup();
+        let mut longest = 1;
+        let mut count = 1;
+        let mut prev = nums[0];
+        for ele in nums.into_iter().skip(1) {
+            if ele == prev {
+                continue;
+            }
+            if ele == prev + 1 {
+                count += 1;
+            } else {
+                longest = max(longest, count);
+                count = 1;
+            }
+            prev = ele;
+        }
+        max(longest, count)
+    }
+
+    // 56. Merge Intervals
+    pub fn merge(mut intervals: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        intervals.sort();
+        let (mut result, mut cur) = (vec![], vec![]);
+        for interval in intervals {
+            if cur.is_empty() {
+                cur = interval;
+            } else {
+                if cur[1] >= interval[0] {
+                    cur[1] = cur[1].max(interval[1])
+                } else {
+                    result.push(cur);
+                    cur = interval;
+                }
+            }
+        }
+        result.push(cur);
+        result
+    }
+
+    // 219. Contains Duplicate II
+    pub fn contains_nearby_duplicate(nums: Vec<i32>, k: i32) -> bool {
+        let mut map: HashMap<i32, usize> = HashMap::with_capacity(nums.len());
+        nums.into_iter().enumerate().any(|(i, v)| {
+            let j = map.insert(v, i);
+            match j {
+                Some(j) => (i - j) as i32 <= k,
+                None => false,
+            }
+        })
+    }
+
+    // 202. Happy Number
+    pub fn is_happy(mut n: i32) -> bool {
+        let map: HashMap<i32, i32> = (0..=9).map(|i| (i, i * i)).collect();
+        loop {
+            let mut tmp = n;
+            n = 0;
+            let mut digit = tmp % 10;
+            while digit != 0 || tmp >= 10 {
+                n += *map.get(&digit).unwrap();
+                tmp /= 10;
+                digit = tmp % 10;
+            }
+            if n == 1 {
+                return true;
+            }
+            if n < 10 {
+                return false;
+            }
+        }
+    }
+
+    // 205. Isomorphic Strings
+    pub fn is_isomorphic(s: String, t: String) -> bool {
+        let mut s2t: HashMap<char, char> = HashMap::with_capacity(26);
+        let mut t2s: HashMap<char, char> = HashMap::with_capacity(26);
+        s.chars()
+            .into_iter()
+            .zip(t.chars().into_iter())
+            .all(|(c1, c2)| {
+                let v1 = s2t.entry(c1).or_insert(c2);
+                let v2 = t2s.entry(c2).or_insert(c1);
+                *v1 == c2 && *v2 == c1
+            })
+    }
+
+    // 289. Game of Life
+    pub fn game_of_life(board: &mut Vec<Vec<i32>>) {}
+    // 51. N-Queens
+    pub fn solve_n_queens(n: i32) -> Vec<Vec<String>> {
+        let n: usize = n as usize;
+        let mut cols: Vec<bool> = vec![false; n];
+        let mut downward_diagonal: Vec<bool> = vec![false; n + n];
+        let mut upward_diagonal: Vec<bool> = vec![false; n + n];
+
+        let mut dp: Vec<String> = vec![];
+        let mut res: Vec<Vec<String>> = vec![];
+        fn backtrack(
+            x: usize,
+            y: usize,
+            n: &usize,
+            cols: &mut Vec<bool>,
+            downward_diagonal: &mut Vec<bool>,
+            upward_diagonal: &mut Vec<bool>,
+            dp: &mut Vec<String>,
+            res: &mut Vec<Vec<String>>,
+        ) {
+            if cols[y] || downward_diagonal[x + n - y] || upward_diagonal[x + y] {
+                return;
+            }
+            println!(
+                "{} {}, {:?}, {:?}, {:?}",
+                x, y, cols, downward_diagonal, upward_diagonal
+            );
+            let str: String = (0..*n).map(|i| if i == y { 'Q' } else { '.' }).collect();
+            dp.push(str);
+            cols[y] = true;
+            downward_diagonal[x + n - y] = true;
+            upward_diagonal[x + y] = true;
+            if x == n - 1 {
+                res.push(dp.clone());
+                dp.pop();
+                cols[y] = false;
+                downward_diagonal[x + n - y] = false;
+                upward_diagonal[x + y] = false;
+                return;
+            }
+            for yy in 0..*n {
+                backtrack(
+                    x + 1,
+                    yy,
+                    n,
+                    cols,
+                    downward_diagonal,
+                    upward_diagonal,
+                    dp,
+                    res,
+                );
+            }
+            dp.pop();
+            cols[y] = false;
+            downward_diagonal[x + n - y] = false;
+            upward_diagonal[x + y] = false;
+        }
+        for y in 0..n {
+            backtrack(
+                0,
+                y,
+                &n,
+                &mut cols,
+                &mut downward_diagonal,
+                &mut upward_diagonal,
+                &mut dp,
+                &mut res,
+            );
+        }
+        res
+    }
+
     // 48. Rotate Image
     pub fn rotate_matrix(matrix: &mut [Vec<i32>]) {
         if matrix.is_empty() {
@@ -606,24 +1019,6 @@ impl Solution {
         ans
     }
 
-    // 148. Sort List
-    pub fn sort_list(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
-        todo!()
-        // let mut dummy = ListNode::new(i32::MIN);
-        // let mut head = head.as_mut();
-        // while head.is_some() {
-        //     let curr = head.as_mut()?;
-
-        //     let mut new_head = &mut dummy;
-        //     while new_head.next.is_some() && new_head.next.as_mut()?.val < curr.as_mut().val {
-        //         new_head = new_head.next.as_mut()?;
-        //     }
-        //     head = &mut curr.next.as_mut();
-        //     curr.next = new_head.next;
-        // }
-        // dummy.next
-    }
-
     // 274. H-Index
     // once
     pub fn h_index(mut citations: Vec<i32>) -> i32 {
@@ -674,7 +1069,7 @@ impl Solution {
                 left = i;
             }
         }
-        left <= 0 && right >= nums.len() - 1
+        left == 0 && right >= nums.len() - 1
     }
 
     // 122. Best Time to Buy and Sell Stock II
@@ -829,6 +1224,84 @@ impl Solution {
             }
         }
         j as i32
+    }
+}
+
+// 155. Min Stack
+struct MinStack {
+    val_to_min: Vec<(i32, i32)>,
+}
+
+/**
+ * `&self` means the method takes an immutable reference.
+ * If you need a mutable reference, change it to `&mut self` instead.
+ */
+impl MinStack {
+    fn new() -> Self {
+        MinStack {
+            val_to_min: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, val: i32) {
+        if let Some((_, pop_min)) = self.val_to_min.last() {
+            self.val_to_min.push((val, min(*pop_min, val)));
+        } else {
+            self.val_to_min.push((val, val));
+        }
+    }
+
+    fn pop(&mut self) {
+        self.val_to_min.pop();
+    }
+
+    fn top(&self) -> i32 {
+        self.val_to_min.last().unwrap().0
+    }
+
+    fn get_min(&self) -> i32 {
+        self.val_to_min.last().unwrap().1
+    }
+}
+
+// 380. Insert Delete GetRandom O(1)
+use rand::Rng;
+
+struct RandomizedSet {
+    vec: Vec<i32>,
+    map: HashMap<i32, usize>,
+}
+impl RandomizedSet {
+    fn new() -> Self {
+        RandomizedSet {
+            vec: Vec::new(),
+            map: HashMap::new(),
+        }
+    }
+    fn insert(&mut self, val: i32) -> bool {
+        if self.map.contains_key(&val) {
+            return false;
+        }
+        self.vec.push(val);
+        self.map.insert(val, self.vec.len() - 1);
+        true
+    }
+    fn remove(&mut self, val: i32) -> bool {
+        if let Some(index) = self.map.remove(&val) {
+            let last_element = *self.vec.last().unwrap();
+            self.vec.swap_remove(index);
+            if index < self.vec.len() {
+                self.map.insert(last_element, index);
+            }
+            true
+        } else {
+            false
+        }
+    }
+    fn get_random(&self) -> i32 {
+        let mut rng = rand::thread_rng();
+        let random_index = rng.gen_range(0..self.vec.len());
+        self.vec[random_index]
     }
 }
 
