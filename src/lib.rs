@@ -1,7 +1,9 @@
 use std::{
+    cell::RefCell,
     cmp::{max, min, Ordering},
     collections::HashMap,
     i32,
+    rc::Rc,
     usize,
 };
 
@@ -19,28 +21,212 @@ impl ListNode {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct TreeNode {
+    pub val: i32,
+    pub left: TNode,
+    pub right: TNode,
+}
+
+impl TreeNode {
+    #[inline]
+    pub fn new(val: i32) -> Self {
+        TreeNode {
+            val,
+            left: None,
+            right: None,
+        }
+    }
+}
+
+type TNode = Option<Rc<RefCell<TreeNode>>>;
+
 struct Solution;
 
 #[allow(dead_code)]
 impl Solution {
-    // 148. Sort List
-    pub fn sort_list(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
-        todo!()
-        // let mut dummy = ListNode::new(i32::MIN);
-        // let mut head = head.as_mut();
-        // while head.is_some() {
-        //     let curr = head.as_mut()?;
-
-        //     let mut new_head = &mut dummy;
-        //     while new_head.next.is_some() && new_head.next.as_mut()?.val < curr.as_mut().val {
-        //         new_head = new_head.next.as_mut()?;
-        //     }
-        //     head = &mut curr.next.as_mut();
-        //     curr.next = new_head.next;
-        // }
-        // dummy.next
+    // 124. Binary Tree Maximum Path Sum
+    pub fn max_path_sum(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+        fn max_path(root: &TNode, max_sum: &mut i32) -> i32 {
+            match root {
+                Some(root) => {
+                    let node = root.borrow();
+                    let val = node.val;
+                    let left = max_path(&node.left, max_sum).max(0);
+                    let right = max_path(&node.right, max_sum).max(0);
+                    *max_sum = (left + right + val).max(*max_sum);
+                    val + max(left, right)
+                }
+                None => 0,
+            }
+        }
+        let mut res = root.as_ref().unwrap().borrow().val;
+        max_path(&root, &mut res);
+        res
     }
+
+    // 129. Sum Root to Leaf Numbers
+    pub fn sum_numbers(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+        fn sum(root: TNode, num: i32) -> i32 {
+            match root {
+                Some(root) => {
+                    let val = root.borrow().val + num * 10;
+                    match (root.borrow().left.clone(), root.borrow().right.clone()) {
+                        (None, None) => val,
+                        (left, right) => sum(left, val) + sum(right, val),
+                    }
+                }
+                None => 0,
+            }
+        }
+        sum(root, 0)
+    }
+
+    // 112. Path Sum
+    pub fn has_path_sum(root: Option<Rc<RefCell<TreeNode>>>, target_sum: i32) -> bool {
+        if let Some(root) = root {
+            let target = target_sum - root.borrow().val;
+            let left = root.borrow().left.clone();
+            let right = root.borrow().right.clone();
+            if target == 0 && left.is_none() && right.is_none() {
+                return true;
+            }
+            return Self::has_path_sum(left, target) || Self::has_path_sum(right, target);
+        }
+        false
+    }
+
+    // 114. Flatten Binary Tree to Linked List
+    pub fn flatten(root: &mut TNode) {
+        fn flat(right: TNode, after: TNode) -> TNode {
+            match right {
+                Some(n) => {
+                    let mut b = n.borrow_mut();
+                    let right = flat(b.right.take(), after);
+                    b.right = flat(b.left.take(), right);
+                    drop(b);
+                    Some(n)
+                }
+                None => after,
+            }
+        }
+        *root = flat(root.take(), None);
+    }
+
+    // 106. Construct Binary Tree from Inorder and Postorder Traversal
+    pub fn build_tree2(inorder: Vec<i32>, postorder: Vec<i32>) -> TNode {
+        fn build(inorder: &[i32], postorder: &[i32]) -> TNode {
+            if inorder.is_empty() || postorder.is_empty() {
+                return None;
+            }
+            let i = inorder.len() - 1;
+            let val = postorder[i];
+            let m = inorder.iter().position(|&v| v == val).unwrap();
+            Some(Rc::new(RefCell::new(TreeNode {
+                val,
+                left: build(&inorder[0..m], &postorder[0..m]),
+                right: build(&inorder[m + 1..i + 1], &postorder[m..i]),
+            })))
+        }
+        build(&inorder[..], &postorder[..])
+    }
+
+    // 105. Construct Binary Tree from Preorder and Inorder Traversal
+    pub fn build_tree(preorder: Vec<i32>, inorder: Vec<i32>) -> TNode {
+        fn dfs(
+            pre: &mut std::slice::Iter<i32>,
+            map: &mut HashMap<i32, usize>,
+            left: usize,
+            right: usize,
+        ) -> TNode {
+            if left > right || right > map.len() {
+                return None;
+            }
+            match pre.next() {
+                Some(val) => {
+                    let i = *map.get(val).unwrap();
+                    Some(Rc::new(RefCell::new(TreeNode {
+                        val: *val,
+                        left: dfs(pre, map, left, i - 1),
+                        right: dfs(pre, map, i + 1, right),
+                    })))
+                }
+                _ => None,
+            }
+        }
+        let mut map: HashMap<i32, usize> = inorder
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (v, i))
+            .collect();
+        dfs(&mut preorder.iter(), &mut map, 0, preorder.len() - 1)
+    }
+
+    // 101. Symmetric Tree
+    pub fn is_symmetric(root: TNode) -> bool {
+        fn dfs(left: TNode, right: TNode) -> bool {
+            match (left, right) {
+                (None, None) => true,
+                (Some(left), Some(right)) => {
+                    left.borrow().val == right.borrow().val
+                        && dfs(left.borrow().left.clone(), right.borrow().right.clone())
+                        && dfs(left.borrow().right.clone(), right.borrow().left.clone())
+                }
+                _ => false,
+            }
+        }
+        match root {
+            Some(root) => dfs(root.borrow().left.clone(), root.borrow().right.clone()),
+            None => true,
+        }
+    }
+
+    // 226. Invert Binary Tree
+    pub fn invert_tree(root: TNode) -> TNode {
+        match root {
+            Some(root) => {
+                let mut node = root.borrow_mut();
+                let tmp = node.left.clone();
+                node.left = node.right.clone();
+                node.right = tmp;
+                Self::invert_tree(node.right.clone());
+                Self::invert_tree(node.left.clone());
+                drop(node);
+                Some(root)
+            }
+            None => None,
+        }
+    }
+
+    // 100. Same Tree
+    pub fn is_same_tree(p: TNode, q: TNode) -> bool {
+        match (p, q) {
+            (None, None) => true,
+            (_, None) | (None, _) => false,
+            (Some(p), Some(q)) => {
+                p.borrow().val == q.borrow().val
+                    && Solution::is_same_tree(p.borrow().left.clone(), q.borrow().left.clone())
+                    && Solution::is_same_tree(p.borrow().right.clone(), q.borrow().right.clone())
+            }
+        }
+    }
+
+    // 104. Maximum Depth of Binary TreeNode
+    pub fn max_depth(root: TNode) -> i32 {
+        fn dp(root: TNode, mut depth: i32) -> i32 {
+            match root {
+                Some(root) => max(
+                    dp(root.borrow().left.clone(), depth + 1),
+                    dp(root.borrow().right.clone(), depth + 1),
+                ),
+                None => depth,
+            }
+        }
+        dp(root, 0)
+    }
+
     // 21. Merge Two Sorted Lists
+    // once
     pub fn merge_two_lists(
         list1: Option<Box<ListNode>>,
         list2: Option<Box<ListNode>>,
@@ -122,6 +308,7 @@ impl Solution {
     }
 
     // 150. Evaluate Reverse Polish Notation
+    // once
     pub fn eval_rpn(tokens: Vec<String>) -> i32 {
         let mut stack = Vec::with_capacity(tokens.len());
         for str in tokens {
@@ -150,6 +337,7 @@ impl Solution {
     }
 
     // 71. Simplify Path
+    // once
     pub fn simplify_path(path: String) -> String {
         let root = "/".to_owned();
         let mut stack = vec![];
@@ -303,13 +491,11 @@ impl Solution {
         for interval in intervals {
             if cur.is_empty() {
                 cur = interval;
+            } else if cur[1] >= interval[0] {
+                cur[1] = cur[1].max(interval[1])
             } else {
-                if cur[1] >= interval[0] {
-                    cur[1] = cur[1].max(interval[1])
-                } else {
-                    result.push(cur);
-                    cur = interval;
-                }
+                result.push(cur);
+                cur = interval;
             }
         }
         result.push(cur);
@@ -1227,15 +1413,41 @@ impl Solution {
     }
 }
 
+// 173. Binary Search Tree Iterator
+struct BSTIterator {
+    stack: Vec<i32>,
+}
+impl BSTIterator {
+    fn new(root: Option<Rc<RefCell<TreeNode>>>) -> Self {
+        fn push(root: &TNode, stack: &mut Vec<i32>) {
+            match root {
+                Some(root) => {
+                    let node = root.as_ref().borrow();
+                    push(&node.right, stack);
+                    stack.push(node.val);
+                    push(&node.left, stack);
+                }
+                None => {}
+            }
+        }
+        let mut stack = Vec::new();
+        push(&root, &mut stack);
+        Self { stack }
+    }
+
+    fn next(&mut self) -> i32 {
+        self.stack.pop().unwrap()
+    }
+
+    fn has_next(&self) -> bool {
+        !self.stack.is_empty()
+    }
+}
+
 // 155. Min Stack
 struct MinStack {
     val_to_min: Vec<(i32, i32)>,
 }
-
-/**
- * `&self` means the method takes an immutable reference.
- * If you need a mutable reference, change it to `&mut self` instead.
- */
 impl MinStack {
     fn new() -> Self {
         MinStack {
