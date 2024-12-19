@@ -1,8 +1,9 @@
 use std::{
     cell::RefCell,
     cmp::{max, min, Ordering},
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     i32,
+    iter::once,
     rc::Rc,
     usize,
 };
@@ -45,6 +46,105 @@ struct Solution;
 
 #[allow(dead_code)]
 impl Solution {
+    // 637. Average of Levels in Binary Tree
+    pub fn average_of_levels(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<f64> {
+        let mut res: Vec<f64> = Vec::with_capacity(100);
+        let mut queue: VecDeque<_> = once(root).flatten().collect();
+        while !queue.is_empty() {
+            let (mut sum, n) = (0.0, queue.len());
+            for i in 0..n {
+                let rc = queue.pop_front().unwrap();
+                let mut node = rc.borrow_mut();
+                sum += node.val as f64;
+                queue.extend([node.left.take(), node.right.take()].into_iter().flatten());
+            }
+            res.push(sum / n as f64);
+        }
+        res
+    }
+
+    // 199. Binary Tree Right Side View
+    pub fn right_side_view(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<i32> {
+        let mut res = vec![0; 1 << 8];
+        fn dfs(root: &TNode, res: &mut Vec<i32>, index: usize) {
+            if let Some(root) = root {
+                let node = root.borrow();
+                if index == res.len() {
+                    res.push(node.val);
+                }
+                dfs(&node.right, res, index + 1);
+                dfs(&node.left, res, index + 1);
+            }
+        }
+        dfs(&root, &mut res, 0);
+        res
+    }
+
+    // 236. Lowest Common Ancestor of a Binary Tree
+    // once
+    pub fn lowest_common_ancestor(
+        root: Option<Rc<RefCell<TreeNode>>>,
+        p: Option<Rc<RefCell<TreeNode>>>,
+        q: Option<Rc<RefCell<TreeNode>>>,
+    ) -> Option<Rc<RefCell<TreeNode>>> {
+        let mut stack_p = Vec::new();
+        let mut stack_q = Vec::new();
+        let p = p.unwrap().borrow().val;
+        let q = q.unwrap().borrow().val;
+        fn find(
+            root: TNode,
+            p: i32,
+            q: i32,
+            stack_p: &mut Vec<TNode>,
+            stack_q: &mut Vec<TNode>,
+            found_p: &mut bool,
+            found_q: &mut bool,
+        ) {
+            if *found_p && *found_q {
+                return;
+            }
+            if let Some(root) = root {
+                let node = root.borrow();
+                if !*found_p {
+                    stack_p.push(Some(root.clone()));
+                    if node.val == p {
+                        *found_p = true;
+                    }
+                }
+                if !*found_q {
+                    stack_q.push(Some(root.clone()));
+                    if node.val == q {
+                        *found_q = true;
+                    }
+                }
+                find(node.left.clone(), p, q, stack_p, stack_q, found_p, found_q);
+                find(node.right.clone(), p, q, stack_p, stack_q, found_p, found_q);
+                if !*found_p {
+                    stack_p.pop();
+                }
+                if !*found_q {
+                    stack_q.pop();
+                }
+            }
+        }
+        find(
+            root,
+            p,
+            q,
+            &mut stack_p,
+            &mut stack_q,
+            &mut false,
+            &mut false,
+        );
+        stack_p
+            .into_iter()
+            .zip(stack_q)
+            .filter(|(p, q)| p == q)
+            .last()
+            .map(|(p, _)| p)
+            .unwrap()
+    }
+
     // 124. Binary Tree Maximum Path Sum
     pub fn max_path_sum(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
         fn max_path(root: &TNode, max_sum: &mut i32) -> i32 {
