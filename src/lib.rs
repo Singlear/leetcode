@@ -1,7 +1,7 @@
 use std::{
     cell::RefCell,
     cmp::{max, min, Ordering},
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     i32,
     iter::once,
     rc::Rc,
@@ -46,13 +46,160 @@ struct Solution;
 
 #[allow(dead_code)]
 impl Solution {
+    // 130. Surrounded Regions
+    pub fn solve130(board: &mut Vec<Vec<char>>) {
+        let mut stack = Vec::new();
+        let (m, n) = (board.len(), board[0].len());
+        for (r, c) in (0..n)
+            .map(|i| (0, i))
+            .chain((0..n).map(|i| (m - 1, i)))
+            .chain((0..m).map(|i| (i, 0)))
+            .chain((0..m).map(|i| (i, n - 1)))
+        {
+            if board[r][c] == 'O' {
+                stack.push((r, c));
+                while let Some((r, c)) = stack.pop() {
+                    if r < m && c < n && board[r][c] == 'O' {
+                        board[r][c] = 'M';
+                        for rc in [0, 1, 0, !0, 0].windows(2) {
+                            stack.push((r.wrapping_add(rc[0]), c.wrapping_add(rc[1])));
+                        }
+                    }
+                }
+            }
+        }
+        for r in board.iter_mut() {
+            for c in r.iter_mut() {
+                *c = if c == &'M' { 'O' } else { 'X' }
+            }
+        }
+    }
+
+    // 200. Number of Islands
+    pub fn num_islands(mut grid: Vec<Vec<char>>) -> i32 {
+        fn dfs(grid: &mut Vec<Vec<char>>, i: usize, j: usize) {
+            if i < grid.len() && j < grid[i].len() && grid[i][j] == '1' {
+                grid[i][j] = '0';
+                for rc in [0, 1, 0, !0, 0].windows(2) {
+                    dfs(grid, i.wrapping_add(rc[0]), j.wrapping_add(rc[1]));
+                }
+            }
+        }
+        let mut count = 0;
+        for i in 0..grid.len() {
+            for j in 0..grid[0].len() {
+                if grid[i][j] == '1' {
+                    count += 1;
+                    dfs(&mut grid, i, j);
+                }
+            }
+        }
+        count
+    }
+
+    // 98. Validate Binary Search Tree
+    pub fn is_valid_bst(root: Option<Rc<RefCell<TreeNode>>>) -> bool {
+        fn dfs(root: TNode, nums: &mut Vec<i64>) {
+            if let Some(root) = root {
+                let mut node = root.borrow_mut();
+                dfs(node.left.take(), nums);
+                nums.push(node.val as i64);
+                dfs(node.right.take(), nums);
+            }
+        }
+        let mut nums = Vec::new();
+        dfs(root, &mut nums);
+        if nums.len() <= 1 {
+            return true;
+        }
+        nums.into_iter()
+            .fold((true, i32::MIN as i64 - 1), |(valid, y), x| {
+                (valid && x > y, x)
+            })
+            .0
+    }
+
+    // 230. Kth Smallest Element in a BST
+    pub fn kth_smallest(root: Option<Rc<RefCell<TreeNode>>>, k: i32) -> i32 {
+        fn dfs(root: TNode, nums: &mut Vec<i32>) {
+            if let Some(root) = root {
+                let mut node = root.borrow_mut();
+                dfs(node.left.take(), nums);
+                nums.push(node.val);
+                dfs(node.right.take(), nums);
+            }
+        }
+        let mut nums = Vec::new();
+        dfs(root, &mut nums);
+        nums[k as usize - 1]
+    }
+
+    // 530. Minimum Absolute Difference in BST
+    pub fn get_minimum_difference(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+        fn dfs(root: TNode, nums: &mut Vec<i32>) {
+            if let Some(root) = root {
+                let mut node = root.borrow_mut();
+                dfs(node.left.take(), nums);
+                nums.push(node.val);
+                dfs(node.right.take(), nums);
+            }
+        }
+        let mut nums = Vec::new();
+        dfs(root, &mut nums);
+        nums.into_iter()
+            .fold((-100000, i32::MAX), |(last, m), x| (x, m.min(x - last)))
+            .1
+    }
+
+    // 103. Binary Tree Zigzag Level Order Traversal
+    pub fn zigzag_level_order(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<Vec<i32>> {
+        let mut res: Vec<Vec<i32>> = Vec::new();
+        let mut q: VecDeque<_> = once(root).flatten().collect();
+        let mut positive = true;
+        while !q.is_empty() {
+            let mut nodes = Vec::with_capacity(q.len());
+            for _ in 0..q.len() {
+                let rc = q.pop_front().unwrap();
+                let mut node = rc.borrow_mut();
+                nodes.push(node.val);
+                q.extend([node.left.take(), node.right.take()].into_iter().flatten());
+            }
+            res.push(if positive {
+                nodes
+            } else {
+                nodes.reverse();
+                nodes
+            });
+            positive = !positive;
+        }
+        res
+    }
+
+    // 102. Binary Tree Level Order Traversal
+    // once
+    pub fn level_order(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<Vec<i32>> {
+        let mut res: Vec<Vec<i32>> = Vec::new();
+        let mut q: VecDeque<_> = once(root).flatten().collect();
+        while !q.is_empty() {
+            let mut nodes = Vec::with_capacity(q.len());
+            for _ in 0..q.len() {
+                let rc = q.pop_front().unwrap();
+                let mut node = rc.borrow_mut();
+                nodes.push(node.val);
+                q.extend([node.left.take(), node.right.take()].into_iter().flatten());
+            }
+            res.push(nodes);
+        }
+        res
+    }
+
     // 637. Average of Levels in Binary Tree
     pub fn average_of_levels(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<f64> {
         let mut res: Vec<f64> = Vec::with_capacity(100);
         let mut queue: VecDeque<_> = once(root).flatten().collect();
         while !queue.is_empty() {
             let (mut sum, n) = (0.0, queue.len());
-            for i in 0..n {
+            for _ in 0..n {
                 let rc = queue.pop_front().unwrap();
                 let mut node = rc.borrow_mut();
                 sum += node.val as f64;
